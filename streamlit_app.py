@@ -2,76 +2,75 @@ import streamlit as st
 from openai import OpenAI
 import os
 
-# --- Config ---
-st.set_page_config(page_title="💬 GST & Tax Assistant", page_icon="💰", layout="wide")
+# Initialize OpenAI client
+client = OpenAI(api_key=st.secrets["API_KEY"])
 
-API_KEY = st.secrets["API_KEY"]
-client = OpenAI(api_key=API_KEY)
+# App config
+st.set_page_config(page_title="GST & Tax Assistant", page_icon="💼", layout="wide")
 
-# --- Custom Theme (Grok/ChatGPT style vibes) ---
+# Custom CSS for dark theme + chat bubbles
 st.markdown("""
     <style>
-        body {
-            background-color: #0f172a; /* dark slate background */
-            color: #f1f5f9;
-        }
-        .stTextInput, .stTextArea {
-            background-color: #1e293b !important;
-            color: #f1f5f9 !important;
-            border-radius: 10px;
-        }
-        .chat-bubble-user {
-            background-color: #2563eb; 
-            color: white;
-            padding: 10px 15px;
-            border-radius: 12px;
-            margin: 5px 0px 5px auto;
-            max-width: 70%;
-        }
-        .chat-bubble-assistant {
-            background-color: #334155; 
-            color: #e2e8f0;
-            padding: 10px 15px;
-            border-radius: 12px;
-            margin: 5px auto 5px 0px;
-            max-width: 70%;
-        }
+    body {
+        background-color: #1e1e1e;
+        color: #f5f5f5;
+    }
+    .chat-bubble-user {
+        background-color: #3a3a3a;
+        color: #fff;
+        padding: 10px 15px;
+        border-radius: 15px;
+        margin: 5px;
+        text-align: right;
+    }
+    .chat-bubble-assistant {
+        background-color: #2d2d2d;
+        color: #0f0;
+        padding: 10px 15px;
+        border-radius: 15px;
+        margin: 5px;
+        text-align: left;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# --- Title ---
-st.markdown("<h2 style='text-align: center;'>💰 GST & Taxation Chat Assistant</h2>", unsafe_allow_html=True)
+# Title
+st.title("💼 GST & Taxation Assistant")
 
-# --- Session state for chat ---
+# Session state for chat history
 if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+    st.session_state.messages = []
 
-# --- Display chat history ---
-for msg in st.session_state["messages"]:
+# File upload
+uploaded_file = st.file_uploader("📎 Upload an invoice or bill", type=["txt", "pdf", "jpg", "png"])
+
+if uploaded_file:
+    st.success("✅ File uploaded. (Currently placeholder – parsing logic can be added)")
+
+# Chat input
+user_input = st.chat_input("Type your query here...")
+
+if user_input:
+    # Store user message
+    st.session_state.messages.append({"role": "user", "content": user_input})
+
+    # OpenAI response
+    response = client.responses.create(
+        model="gpt-5-mini",
+        input=[
+            {"role": "system", "content": "You are a professional GST and taxation assistant for Chartered Accountants."},
+            *[{"role": msg["role"], "content": msg["content"]} for msg in st.session_state.messages]
+        ]
+    )
+
+    reply = response.output[0].content[0].text
+
+    # Store assistant message
+    st.session_state.messages.append({"role": "assistant", "content": reply})
+
+# Display chat
+for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(f"<div class='chat-bubble-user'>{msg['content']}</div>", unsafe_allow_html=True)
     else:
         st.markdown(f"<div class='chat-bubble-assistant'>{msg['content']}</div>", unsafe_allow_html=True)
-
-# --- Input box at bottom ---
-with st.container():
-    user_input = st.text_input("Type your query here...", key="input_box")
-    if st.button("Send"):
-        if user_input.strip():
-            # Save user msg
-            st.session_state["messages"].append({"role": "user", "content": user_input})
-            
-            try:
-                # Call OpenAI
-                response = client.responses.create(
-                    model="gpt-5-mini",
-                    input=[
-                        {"role": "developer", "content": [{"type": "input_text", "text": "You are a GST/taxation assistant. Respond concisely with calculations only."}]},
-                        {"role": "user", "content": [{"type": "input_text", "text": user_input}]}
-                    ]
-                )
-                output = response.output_text
-                st.session_state["messages"].append({"role": "assistant", "content": output})
-                st.rerun()
-            except Exception as e:
-                st.error(f"⚠️ Error: {e}")
