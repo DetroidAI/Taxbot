@@ -1,19 +1,9 @@
-# 💬 Chatbot template
+# 💰 GST & Taxation Chat Assistant
 
-A simple Streamlit app that shows how to build a chatbot using OpenAI's GPT-3.5.
+A plug-and-play Streamlit app that connects to OpenAI API and serves as a GST/taxation assistant.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://chatbot-template.streamlit.app/)
-
-### How to run it on your own machine
-
-1. Install the requirements
-
-   ```
-   $ pip install -r requirements.txt
-   ```
-
-2. Run the app
-
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+## 🚀 How to run locally
+1. Clone repo:
+   ```bash
+   git clone https://github.com/yourusername/chat-assistant.git
+   cd chat-assistant
