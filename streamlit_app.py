@@ -1,56 +1,77 @@
 import streamlit as st
 from openai import OpenAI
+import os
 
-# Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
-)
+# --- Config ---
+st.set_page_config(page_title="💬 GST & Tax Assistant", page_icon="💰", layout="wide")
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+API_KEY = st.secrets["API_KEY"]
+client = OpenAI(api_key=API_KEY)
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+# --- Custom Theme (Grok/ChatGPT style vibes) ---
+st.markdown("""
+    <style>
+        body {
+            background-color: #0f172a; /* dark slate background */
+            color: #f1f5f9;
+        }
+        .stTextInput, .stTextArea {
+            background-color: #1e293b !important;
+            color: #f1f5f9 !important;
+            border-radius: 10px;
+        }
+        .chat-bubble-user {
+            background-color: #2563eb; 
+            color: white;
+            padding: 10px 15px;
+            border-radius: 12px;
+            margin: 5px 0px 5px auto;
+            max-width: 70%;
+        }
+        .chat-bubble-assistant {
+            background-color: #334155; 
+            color: #e2e8f0;
+            padding: 10px 15px;
+            border-radius: 12px;
+            margin: 5px auto 5px 0px;
+            max-width: 70%;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+# --- Title ---
+st.markdown("<h2 style='text-align: center;'>💰 GST & Taxation Chat Assistant</h2>", unsafe_allow_html=True)
 
-    # Display the existing chat messages via `st.chat_message`.
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+# --- Session state for chat ---
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
+# --- Display chat history ---
+for msg in st.session_state["messages"]:
+    if msg["role"] == "user":
+        st.markdown(f"<div class='chat-bubble-user'>{msg['content']}</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<div class='chat-bubble-assistant'>{msg['content']}</div>", unsafe_allow_html=True)
 
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        )
-
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+# --- Input box at bottom ---
+with st.container():
+    user_input = st.text_input("Type your query here...", key="input_box")
+    if st.button("Send"):
+        if user_input.strip():
+            # Save user msg
+            st.session_state["messages"].append({"role": "user", "content": user_input})
+            
+            try:
+                # Call OpenAI
+                response = client.responses.create(
+                    model="gpt-5-mini",
+                    input=[
+                        {"role": "developer", "content": [{"type": "input_text", "text": "You are a GST/taxation assistant. Respond concisely with calculations only."}]},
+                        {"role": "user", "content": [{"type": "input_text", "text": user_input}]}
+                    ]
+                )
+                output = response.output_text
+                st.session_state["messages"].append({"role": "assistant", "content": output})
+                st.rerun()
+            except Exception as e:
+                st.error(f"⚠️ Error: {e}")
