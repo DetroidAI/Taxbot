@@ -24,7 +24,7 @@ if st.button("Process"):
     )
 
     st.write("### Result")
-    st.text(response.output[0].content[0].text) as st
+    print(response.choices[0]. message["content"])
 
 
 # App config
